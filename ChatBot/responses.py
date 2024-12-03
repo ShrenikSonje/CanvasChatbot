@@ -1,0 +1,26 @@
+# responses.py
+
+PREDEFINED_RESPONSES = {
+    "hi": "Hello!, How can I assist you today?",
+    "hello": "Hi there!, What would you like to discuss today?",
+    "who are you": "I'm Canvas, your expert chatbot in the printing industry.",
+    "how are you": "I'm just a program, but thanks for asking! I'm here to help.",
+    "What is your name?": "I'm Canvas, your expert chatbot in the printing industry.",
+    "What is your name": "I'm Canvas, your expert chatbot in the printing industry.",
+    "good morning": "Good morning! How can I assist you today?",
+    "good evening": "Good evening! What can I do for you?",
+    "who are you?": "I'm Canvas, your expert chatbot in the printing industry.",
+    "how are you?": "I'm just a program, but thanks for asking! I'm here to help.",
+    "what is your name": "My name is Canvas, your assistant in the printing industry.",
+    "what can you do": "I can help you with all things related to the printing industry!",
+    "tell me a joke": "Why don't skeletons fight each other? They don't have the guts!",
+    "goodbye": "Goodbye! Feel free to reach out if you need assistance later.",
+    "bye": "Goodbye! Feel free to reach out if you need assistance later.",
+    "thanks": "You're welcome! I'm always here to help.",
+    "thank you": "You're welcome! I'm always here to help.",
+    "how can I help you": "I'm here to help you with any questions or tasks related to printing.",
+    "what's the weather like": "I can't check the weather, but I can help with printing queries!",
+    "help": "Sure, what do you need help with? Feel free to ask about printing services or anything else.",
+    "print a document": "To print a document, I can guide you through the process or offer printing services depending on your needs.",
+    "what is printing": "Printing is the process of reproducing text and images, typically on paper, using a variety of techniques.",
+}

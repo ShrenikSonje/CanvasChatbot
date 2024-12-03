@@ -1,0 +1,228 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Chatbot{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'chatbot.css' %}">
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
+<div class="chat-container">
+    <!-- Sidebar for session management -->
+    <div class="sidebar">
+        <h3>Sessions</h3>
+        <button id="new-session-btn" class="btn btn-block">+ New Session</button>
+        <ul class="session-list">
+            {% for session in sessions %}
+                <li class="{% if session == current_session %}active{% endif %}">
+                    <a href="{% url 'chat' session.id %}">
+                        <span class="session-title" id="session-title-{{ session.id }}">
+                            {{ session.title }}
+                        </span>
+                    </a>
+                    <div class="session-buttons">
+                        <button class="btn edit-btn edit-session-title" title="Rename" data-session-id="{{ session.id }}">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn delete-btn delete-session" title="Delete" data-session-id="{{ session.id }}">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </div>
+                </li>
+            {% endfor %}
+        </ul>
+        
+    </div>
+
+    <!-- Chatbox area -->
+    <div class="chatbox">
+        <div id="chat-messages" class="chat-messages">
+            {% for message in messages %}
+            <div class="message-container">
+                {% if message.question %}
+                    <div class="user-message"><strong>You:</strong> {{ message.question }}</div>
+                {% endif %}
+                {% if message.response %}
+                    <div class="chatbot-response"><strong>Chatbot:</strong> {{ message.response|linebreaks }}</div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        
+        <!-- Message input form -->
+        <form method="post" id="chat-form">
+            {% csrf_token %}
+            <textarea name="user_input" placeholder="Message Canvas"></textarea>
+        </form>
+        <div id="loader" style="display: none;">
+            <i class="fas fa-spinner fa-spin"></i> Loading...
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const chatBox = document.getElementById("chat-messages");
+        const input = document.querySelector("textarea[name='user_input']");
+        const form = document.getElementById("chat-form");
+        const loader = document.getElementById("loader");
+    
+        // Scroll to the bottom of the chat messages
+        const scrollToBottom = () => {
+            chatBox.scrollTop = chatBox.scrollHeight;
+        };
+    
+        // Scroll to the bottom when the page loads
+        scrollToBottom();
+    
+        // Create new session
+        document.getElementById("new-session-btn").addEventListener("click", () => {
+            window.location.href = "{% url 'create_session' %}";
+        });
+    
+        // Edit session title inline
+        document.querySelectorAll(".edit-session-title").forEach(button => {
+            button.addEventListener("click", (event) => {
+                event.preventDefault(); // Prevent default button behavior
+    
+                const sessionId = button.getAttribute("data-session-id");
+                const sessionTitleElement = document.getElementById(`session-title-${sessionId}`);
+                const originalTitle = sessionTitleElement.innerText;
+    
+                // Turn the session title into an editable input field
+                sessionTitleElement.innerHTML = `
+                    <input type="text" 
+                           id="session-title-input-${sessionId}" 
+                           value="${originalTitle}" 
+                           class="session-title-input">
+                `;
+    
+                const inputField = document.getElementById(`session-title-input-${sessionId}`);
+    
+                inputField.focus(); // Focus on the input field
+    
+                // Save the updated title when the input field loses focus or on Enter key press
+                const saveTitle = () => {
+                    const newTitle = inputField.value.trim();
+                    if (newTitle && newTitle !== originalTitle) {
+                        fetch(`/edit_session_title/${sessionId}/`, {
+                            method: "POST",
+                            headers: { 
+                                "Content-Type": "application/json", 
+                                "X-CSRFToken": "{{ csrf_token }}" 
+                            },
+                            body: JSON.stringify({ title: newTitle })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                sessionTitleElement.innerText = newTitle;
+                            } else {
+                                sessionTitleElement.innerText = originalTitle; // Revert if update fails
+                            }
+                        })
+                        .catch(() => {
+                            sessionTitleElement.innerText = originalTitle; // Handle errors
+                        });
+                    } else {
+                        sessionTitleElement.innerText = originalTitle; // Revert if no change
+                    }
+                };
+    
+                // Save title on blur (when the input loses focus)
+                inputField.addEventListener("blur", saveTitle);
+    
+                // Save title on pressing Enter
+                inputField.addEventListener("keydown", (e) => {
+                    if (e.key === "Enter") {
+                        e.preventDefault();
+                        inputField.blur(); // Trigger the blur event to save the title
+                    }
+                });
+            });
+        });
+    
+        // Delete session
+        document.querySelectorAll(".delete-session").forEach(button => {
+            button.addEventListener("click", (event) => {
+                event.preventDefault(); // Prevent page reload
+        
+                const sessionId = button.getAttribute("data-session-id");
+                if (confirm("Are you sure you want to delete this session?")) {
+                    fetch(`/delete_session/${sessionId}/`, {
+                        method: "POST",
+                        headers: { "X-CSRFToken": "{{ csrf_token }}" }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            window.location.href = data.redirect_url; // Redirect to the new session
+                        } else {
+                            alert("Failed to delete the session.");
+                        }
+                    })
+                    .catch(() => alert("An error occurred while deleting the session."));
+                }
+            });
+        });
+            
+      // Handle message submission and response streaming
+input.addEventListener("keypress", async (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+
+        const userMessage = input.value.trim();
+        if (!userMessage) return;
+
+        // Clear the textarea immediately after pressing Enter
+        input.value = ''; 
+
+        const userMessageDiv = document.createElement("div");
+        userMessageDiv.classList.add("user-message");
+        userMessageDiv.innerHTML = `<strong>You:</strong> ${userMessage}`;
+        chatBox.appendChild(userMessageDiv);
+        scrollToBottom(); // Scroll to the bottom after user message
+
+        loader.style.display = "block";
+
+        const response = await fetch("/stream_response/", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 
+                message: userMessage, 
+                session_id: "{{ current_session.id }}"  // Send the current session ID
+            })
+        });
+
+        const reader = response.body.getReader();
+        const botMessageDiv = document.createElement("div");
+        botMessageDiv.classList.add("chatbot-response");
+        botMessageDiv.innerHTML = `<strong>Chatbot:</strong> <span></span>`;
+        chatBox.appendChild(botMessageDiv);
+
+        const updateChat = (text) => {
+            botMessageDiv.querySelector("span").innerText += text;
+            scrollToBottom(); // Scroll to the bottom as tokens are received
+        };
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            const tokenText = new TextDecoder().decode(value);
+            updateChat(tokenText);
+        }
+
+        loader.style.display = "none";
+    }
+});
+
+    });
+    
+</script>
+
+{% endblock %}

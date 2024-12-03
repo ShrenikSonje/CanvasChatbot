@@ -1,0 +1,5 @@
+django
+langchain
+langchain_community
+huggingface-hub
+langchain_ollama
